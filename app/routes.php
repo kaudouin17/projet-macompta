@@ -24,4 +24,30 @@ return function (App $app) {
         $group->get('', ListUsersAction::class);
         $group->get('/{id}', ViewUserAction::class);
     });
+
+    $app->get('/comptes/{uuid}/ecritures', function ($request, $response, $args) {
+        $uuid = $args['uuid'];
+    
+        $pdo = $this->get(PDO::class);
+        $stmt = $pdo->prepare('SELECT label, date, type, amount, created_at, updated_at FROM ecritures WHERE compte_uuid = :uuid');
+        $stmt->execute(['uuid' => $uuid]);
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        $formattedResponse = ['items' => []];
+    
+        foreach ($results as $result) {
+            $formattedResponse['items'][] = [
+                'label' => $result['label'],
+                'date' => $result['date'],
+                'type' => $result['type'],
+                'amount' => $result['amount'],
+                'created_at' => $result['created_at'],
+                'updated_at' => $result['updated_at']
+            ];
+        }
+        $response->getBody()->write(json_encode($formattedResponse));
+        return $response->withHeader('Content-Type', 'application/json');
+    }); 
+
+    
 };

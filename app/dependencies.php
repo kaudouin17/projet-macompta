@@ -2,29 +2,27 @@
 
 declare(strict_types=1);
 
-use App\Application\Settings\SettingsInterface;
 use DI\ContainerBuilder;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
-use Monolog\Processor\UidProcessor;
 use Psr\Container\ContainerInterface;
-use Psr\Log\LoggerInterface;
+use App\Application\Settings\SettingsInterface;
+use PDO;
 
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
-        LoggerInterface::class => function (ContainerInterface $c) {
-            $settings = $c->get(SettingsInterface::class);
+        PDO::class => function (ContainerInterface $c) {
+            $settings = $c->get(SettingsInterface::class)->get('db');
 
-            $loggerSettings = $settings->get('logger');
-            $logger = new Logger($loggerSettings['name']);
+            $dsn = sprintf(
+                'mysql:host=%s;dbname=%s;charset=%s',
+                $settings['host'],
+                $settings['database'],
+                $settings['charset']
+            );
 
-            $processor = new UidProcessor();
-            $logger->pushProcessor($processor);
+            $pdo = new PDO($dsn, $settings['username'], $settings['password']);
+            $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-            $handler = new StreamHandler($loggerSettings['path'], $loggerSettings['level']);
-            $logger->pushHandler($handler);
-
-            return $logger;
+            return $pdo;
         },
     ]);
 };
