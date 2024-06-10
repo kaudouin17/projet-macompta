@@ -8,10 +8,11 @@ use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\App;
 use Slim\Interfaces\RouteCollectorProxyInterface as Group;
+use Ramsey\Uuid\Uuid;
+
 
 return function (App $app) {
     $app->options('/{routes:.*}', function (Request $request, Response $response) {
-        // CORS Pre-Flight OPTIONS Request Handler
         return $response;
     });
 
@@ -48,6 +49,54 @@ return function (App $app) {
         $response->getBody()->write(json_encode($formattedResponse));
         return $response->withHeader('Content-Type', 'application/json');
     }); 
+
+    $app->post('/comptes/{uuid}/ecritures', function ($request, $response, $args) {
+        $compteUuid = $args['uuid'];
+        $data = $request->getParsedBody();
+    
+        $errors = [];
+    
+        if (!isset($data['label']) || !isset($data['date']) || !isset($data['type']) || !isset($data['amount'])) {
+            $errors[] = 'Champs obligatoires manquants';
+        }
+    
+        if (isset($data['amount']) && $data['amount'] < 0) {
+            $errors[] = 'Le montant ne peut pas être négatif';
+        }
+    
+        if (isset($data['type']) && !in_array($data['type'], ['C', 'D'])) {
+            $errors[] = 'Type invalide';
+        }
+    
+        if (isset($data['date'])) {
+            try {
+                $date = new DateTime($data['date']);
+            } catch (Exception $e) {
+                $errors[] = 'Format de date invalide';
+            }
+        }
+    
+        if (!empty($errors)) {
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $uuid = Uuid::uuid4()->toString();
+        $pdo = $this->get(PDO::class);
+        $stmt = $pdo->prepare('INSERT INTO ecritures (uuid, compte_uuid, label, date, type, amount) VALUES (:uuid, :compte_uuid, :label, :date, :type, :amount)');
+        $stmt->execute([
+            'uuid' => $uuid,
+            'compte_uuid' => $compteUuid,
+            'label' => $data['label'],
+            'date' => $date->format('Y-m-d'),
+            'type' => $data['type'],
+            'amount' => $data['amount']
+        ]);
+    
+        $response->getBody()->write(json_encode(['uuid' => $uuid]));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+    });
+    
 
     
 };
