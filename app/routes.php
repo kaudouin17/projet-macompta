@@ -274,4 +274,40 @@ return function (App $app) {
         return $response->withStatus(204);
     });
 
+    $app->get('/comptes', function ($request, $response, $args) {
+        $pdo = $this->get(PDO::class);
+    
+        // Récupérer tous les comptes
+        $stmt = $pdo->query('SELECT uuid, login, name, created_at, updated_at FROM comptes');
+        $comptes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        // Initialiser le tableau des comptes avec les écritures
+        foreach ($comptes as &$compte) {
+            $compte['ecritures'] = [];
+        }
+    
+        // Récupérer toutes les écritures
+        $stmt = $pdo->query('SELECT uuid, compte_uuid, label, date, type, amount, created_at, updated_at FROM ecritures');
+        $ecritures = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+        // Structurer les écritures par compte
+        foreach ($ecritures as $ecriture) {
+            foreach ($comptes as &$compte) {
+                if ($compte['uuid'] === $ecriture['compte_uuid']) {
+                    $compte['ecritures'][] = $ecriture;
+                    break;
+                }
+            }
+        }
+    
+        // Construire la réponse JSON
+        $responseBody = [
+            'comptes' => $comptes
+        ];
+    
+        $response->getBody()->write(json_encode($responseBody));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+    
+
 };
