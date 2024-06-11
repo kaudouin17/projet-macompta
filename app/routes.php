@@ -97,6 +97,67 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
     });
     
+    $app->put('/comptes/{compte_uuid}/ecritures/{uuid}', function ($request, $response, $args) {
+        $compteUuid = $args['compte_uuid'];
+        $ecritureUuid = $args['uuid'];
+        $data = $request->getParsedBody();
+    
+        $errors = [];
+    
+        if (!isset($data['label']) || !isset($data['date']) || !isset($data['type']) || !isset($data['amount'])) {
+            $errors[] = 'Champs obligatoires manquants';
+        }
+    
+        if (isset($data['amount']) && $data['amount'] < 0) {
+            $errors[] = 'Le montant ne peut pas être négatif';
+        }
+    
+        if (isset($data['type']) && !in_array($data['type'], ['C', 'D'])) {
+            $errors[] = 'Type invalide';
+        }
+    
+        if (isset($data['date'])) {
+            try {
+                $date = new DateTime($data['date']);
+            } catch (Exception $e) {
+                $errors[] = 'Format de date invalide';
+            }
+        }
+    
+        if (!empty($errors)) {
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $pdo = $this->get(PDO::class);
+    
+        $stmt = $pdo->prepare('UPDATE ecritures SET label = :label, date = :date, type = :type, amount = :amount, updated_at = CURRENT_TIMESTAMP WHERE uuid = :uuid AND compte_uuid = :compte_uuid');
+        $stmt->execute([
+            'label' => $data['label'],
+            'date' => $date->format('Y-m-d'),
+            'type' => $data['type'],
+            'amount' => $data['amount'],
+            'uuid' => $ecritureUuid,
+            'compte_uuid' => $compteUuid
+        ]);
+    
+        $response->getBody()->write(json_encode(['uuid' => $ecritureUuid]));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
+    });
+    
+    $app->delete('/comptes/{compte_uuid}/ecritures/{uuid}', function ($request, $response, $args) {
+        $compteUuid = $args['compte_uuid'];
+        $ecritureUuid = $args['uuid'];
 
+        $pdo = $this->get(PDO::class);
+
+        $stmt = $pdo->prepare('DELETE FROM ecritures WHERE uuid = :uuid AND compte_uuid = :compte_uuid');
+        $stmt->execute([
+            'uuid' => $ecritureUuid,
+            'compte_uuid' => $compteUuid
+        ]);
+
+        return $response->withStatus(204);
+    });
     
 };
