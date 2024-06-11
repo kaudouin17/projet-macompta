@@ -217,4 +217,40 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
     });
 
+    $app->put('/comptes/{compte_uuid}', function ($request, $response, $args) {
+        $compteUuid = $args['compte_uuid'];
+        $data = $request->getParsedBody();
+    
+        $errors = [];
+    
+        if (!isset($data['login']) || !isset($data['password'])) {
+            $errors[] = 'Le login et le mot de passe sont obligatoires';
+        }
+    
+        if (!empty($errors)) {
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $pdo = $this->get(PDO::class);
+        $stmt = $pdo->prepare('SELECT login FROM comptes WHERE uuid = :uuid');
+        $stmt->execute(['uuid' => $compteUuid]);
+        $compte = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$compte || $compte['login'] !== $data['login']) {
+            $errors[] = 'Le login est incorrect';
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $stmt = $pdo->prepare('UPDATE comptes SET password = :password, name = :name, updated_at = CURRENT_TIMESTAMP WHERE uuid = :uuid');
+        $stmt->execute([
+            'password' => $data['password'],
+            'name' => $data['name'] ?? '',
+            'uuid' => $compteUuid
+        ]);
+    
+        return $response->withStatus(204);
+    });
+
 };
