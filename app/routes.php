@@ -184,4 +184,37 @@ return function (App $app) {
         return $response->withHeader('Content-Type', 'application/json');
     });
     
+    $app->post('/comptes', function ($request, $response, $args) {
+        $data = $request->getParsedBody();
+    
+        $errors = [];
+    
+        if (empty($data['login']) || empty($data['password'])) {
+            $errors[] = 'Le login et le mot de passe sont obligatoires';
+        }
+    
+        if (!empty($errors)) {
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $uuid = Uuid::uuid4()->toString();
+    
+        try {
+            $pdo = $this->get(PDO::class);
+            $stmt = $pdo->prepare('INSERT INTO comptes (uuid, login, password, name) VALUES (:uuid, :login, :password, :name)');
+            $stmt->execute([
+                'uuid' => $uuid,
+                'login' => $data['login'],
+                'password' => $data['password'],
+                'name' => $data['name'] ?? ''
+            ]);
+        } catch (PDOException $e) {
+            return $response->withJson(['error' => 'Erreur lors de l\'ajout du compte dans la base de données'], 500);
+        }
+    
+        $response->getBody()->write(json_encode(['uuid' => $uuid]));
+        return $response->withHeader('Content-Type', 'application/json')->withStatus(201);
+    });
+
 };

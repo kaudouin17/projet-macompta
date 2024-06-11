@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use DI\ContainerBuilder;
 use Psr\Container\ContainerInterface;
-use App\Application\Settings\SettingsInterface;
-use PDO;
+use App\Application\Settings\SettingsInterface; // S'il y a d'autres classes utilisées, gardez ces déclarations use
+// Pas besoin de la déclaration use PDO ici
 
 return function (ContainerBuilder $containerBuilder) {
     $containerBuilder->addDefinitions([
