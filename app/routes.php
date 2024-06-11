@@ -253,4 +253,25 @@ return function (App $app) {
         return $response->withStatus(204);
     });
 
+    $app->delete('/comptes/{compte_uuid}', function ($request, $response, $args) {
+        $compteUuid = $args['compte_uuid'];
+    
+        $pdo = $this->get(PDO::class);
+    
+        $stmt = $pdo->prepare('SELECT COUNT(*) AS count FROM ecritures WHERE compte_uuid = :compte_uuid');
+        $stmt->execute(['compte_uuid' => $compteUuid]);
+        $count = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    
+        if ($count > 0) {
+            $errors[] = 'Le compte a des écritures associées et ne peut pas être supprimé';
+            $response->getBody()->write(json_encode(['errors' => $errors]));
+            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+        }
+    
+        $stmt = $pdo->prepare('DELETE FROM comptes WHERE uuid = :uuid');
+        $stmt->execute(['uuid' => $compteUuid]);
+    
+        return $response->withStatus(204);
+    });
+
 };
