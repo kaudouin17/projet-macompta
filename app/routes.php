@@ -157,5 +157,31 @@ return function (App $app) {
 
         return $response->withStatus(204);
     });
+
+    $app->get('/comptes/{uuid}', function ($request, $response, $args) {
+        $uuid = $args['uuid'];
+    
+        $pdo = $this->get(PDO::class);
+        $stmt = $pdo->prepare('SELECT uuid, login, name, created_at, updated_at FROM comptes WHERE uuid = :uuid');
+        $stmt->execute(['uuid' => $uuid]);
+        $compte = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$compte) {
+            $errorResponse = ['error' => 'Compte non trouvé'];
+            $response->getBody()->write(json_encode($errorResponse));
+            return $response->withStatus(404)->withHeader('Content-Type', 'application/json');
+        }
+    
+        $formattedResponse = [
+            'uuid' => $compte['uuid'],
+            'login' => $compte['login'],
+            'name' => $compte['name'],
+            'created_at' => $compte['created_at'],
+            'updated_at' => $compte['updated_at']
+        ];
+    
+        $response->getBody()->write(json_encode($formattedResponse));
+        return $response->withHeader('Content-Type', 'application/json');
+    });
     
 };
