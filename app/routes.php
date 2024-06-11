@@ -125,8 +125,7 @@ return function (App $app) {
         }
     
         if (!empty($errors)) {
-            $response->getBody()->write(json_encode(['errors' => $errors]));
-            return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
+            return $response->withStatus(400);
         }
     
         $pdo = $this->get(PDO::class);
@@ -141,23 +140,10 @@ return function (App $app) {
             'compte_uuid' => $compteUuid
         ]);
     
-        $response->getBody()->write(json_encode(['uuid' => $ecritureUuid]));
-        return $response->withHeader('Content-Type', 'application/json')->withStatus(200);
-    });
-    
-    $app->delete('/comptes/{compte_uuid}/ecritures/{uuid}', function ($request, $response, $args) {
-        $compteUuid = $args['compte_uuid'];
-        $ecritureUuid = $args['uuid'];
-
-        $pdo = $this->get(PDO::class);
-
-        $stmt = $pdo->prepare('DELETE FROM ecritures WHERE uuid = :uuid AND compte_uuid = :compte_uuid');
-        $stmt->execute([
-            'uuid' => $ecritureUuid,
-            'compte_uuid' => $compteUuid
-        ]);
-
         return $response->withStatus(204);
     });
+    
+    
+    
     
 };
